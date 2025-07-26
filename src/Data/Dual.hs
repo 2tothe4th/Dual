@@ -44,9 +44,6 @@ instance (Ord a, Num a) => Num (Dual a) where
     signum = (signum <$>)
     fromInteger = toDual . fromInteger
 
-conjugateDual :: Num a => Dual a -> Dual a
-conjugateDual (Dual a b) = Dual a (-b)
-
 instance (Ord a, Fractional a) => Fractional (Dual a) where 
     Dual 0 b / Dual 0 d = Dual (b / d) 0
     Dual _ _ / Dual 0 _ = error "Division of the form (a + bε) / (dε) where a is non-zero is undefined."
@@ -64,16 +61,28 @@ instance (Ord a, Floating a) => Floating (Dual a) where
     cosh z = 0.5 * (exp z + exp (-z))
     tanh z = (exp z - exp (-z)) / (exp z + exp (-z))
 
+conjugateDual :: Num a => Dual a -> Dual a
+conjugateDual (Dual a b) = Dual a (-b)
+
 rightSidedLimit :: (Ord a, Num a) => Dual a -> (Dual a -> Dual a) -> Dual a
-rightSidedLimit target function = toDual . real $ function (target + epsilon)
+rightSidedLimit target function = flattenReal $ function (target + epsilon)
 
 leftSidedLimit :: (Ord a, Num a) => Dual a -> (Dual a -> Dual a) -> Dual a
-leftSidedLimit target function = toDual . real $ function (target - epsilon)
+leftSidedLimit target function = flattenReal $ function (target - epsilon)
 
 limit :: (Ord a, Num a) => Dual a -> (Dual a -> Dual a) -> Maybe (Dual a)
 limit target function = if left == right then Just left else Nothing where
     left = leftSidedLimit target function
     right = rightSidedLimit target function
+
+flattenReal :: Num a => Dual a -> Dual a
+flattenReal (Dual a _) = Dual a 0 
+
+flattenNonreal :: Num a => Dual a -> Dual a
+flattenNonreal (Dual _ b) = Dual 0 b
+
+transposeDual :: Dual a -> Dual a
+transposeDual (Dual a b) = Dual b a
 
 derive :: (Ord a, Fractional a) => (Dual a -> Dual a) -> (Dual a -> Dual a)
 derive f x = (f (x + epsilon) - f x) / epsilon
@@ -84,5 +93,11 @@ _real = lens real (\(Dual _ b) c -> Dual c b)
 _nonreal :: Lens (Dual a) (Dual a) a a
 _nonreal = lens nonreal (\(Dual a _) d -> Dual a d)
 
-_transpose :: Getter (Dual a) (Dual a)
-_transpose  = to (\(Dual a b) -> Dual b a)
+flattenedReal :: Num a => Getter (Dual a) (Dual a)
+flattenedReal = to flattenReal
+
+flattenedNonreal :: Num a => Getter (Dual a) (Dual a)
+flattenedNonreal = to flattenNonreal
+
+transposed :: Getter (Dual a) (Dual a)
+transposed = to transposeDual
