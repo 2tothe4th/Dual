@@ -20,7 +20,7 @@ library
     exposed-modules:  Data.Dual
     -- other-modules:
     -- other-extensions:
-    build-depends:    base ^>=4.18.3.0
+    build-depends:    base, linear, lens
     hs-source-dirs:   src
     default-language: GHC2021
 
@@ -33,5 +33,5 @@ test-suite dual-test
     hs-source-dirs:   test
     main-is:          Main.hs
     build-depends:
-        base ^>=4.18.3.0,
+        base,
         dual
