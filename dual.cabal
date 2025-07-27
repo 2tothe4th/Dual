@@ -1,8 +1,8 @@
 cabal-version:      3.0
 name:               dual
 version:            0.1.0.0
--- synopsis:
--- description:
+synopsis: A Haskell package for dual numbers.
+description: Check Github for description.
 license:            MIT
 license-file:       LICENSE
 author:             Bravery Aung (Sixteen)

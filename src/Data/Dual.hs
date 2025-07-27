@@ -1,14 +1,31 @@
 module Data.Dual where
 import Control.Lens
 
+-- | The main data type.
 data Dual a = Dual { real :: a, nonreal :: a } deriving Eq
 
+-- | Converts a number into 'Dual'.
+--
+-- @
+-- toDual x = 'Dual' x 0
+-- @
 toDual :: Num a => a -> Dual a
 toDual x = Dual x 0
 
+
+-- | One.
+--
+-- @
+-- dualOne = Dual 1 0
+-- @
 dualOne :: Num a => Dual a
 dualOne = Dual 1 0
 
+-- | Epsilon (such that ε^2 = 0 but ε /= 0).
+--
+-- @
+-- epsilon = Dual 0 1
+-- @
 epsilon :: Num a => Dual a
 epsilon = Dual 0 1
 
@@ -61,43 +78,91 @@ instance (Ord a, Floating a) => Floating (Dual a) where
     cosh z = 0.5 * (exp z + exp (-z))
     tanh z = (exp z - exp (-z)) / (exp z + exp (-z))
 
+
+-- | Conjugate.
+--
+-- @
+-- conjugateDual (Dual a b) = Dual a (-b)
+-- @
 conjugateDual :: Num a => Dual a -> Dual a
 conjugateDual (Dual a b) = Dual a (-b)
 
+-- | Takes the right sided limit given a limiting value and a function.
+--
+-- @
+-- rightSidedLimit target function = realFlatten $ function (target + epsilon)
+-- @
 rightSidedLimit :: (Ord a, Num a) => Dual a -> (Dual a -> Dual a) -> Dual a
-rightSidedLimit target function = flattenReal $ function (target + epsilon)
+rightSidedLimit target function = realFlatten $ function (target + epsilon)
 
+-- | Takes the left sided limit given a limiting value and a function.
+--
+-- @
+-- leftSidedLimit target function = realFlatten $ function (target - epsilon)
+-- @
 leftSidedLimit :: (Ord a, Num a) => Dual a -> (Dual a -> Dual a) -> Dual a
-leftSidedLimit target function = flattenReal $ function (target - epsilon)
+leftSidedLimit target function = realFlatten $ function (target - epsilon)
 
+-- | Takes the limit given a limiting value and a function.
+--
+-- @
+--  limit target function = if left == right then Just left else Nothing where
+--      left = leftSidedLimit target function
+--      right = rightSidedLimit target function
+-- @
 limit :: (Ord a, Num a) => Dual a -> (Dual a -> Dual a) -> Maybe (Dual a)
 limit target function = if left == right then Just left else Nothing where
     left = leftSidedLimit target function
     right = rightSidedLimit target function
 
-flattenReal :: Num a => Dual a -> Dual a
-flattenReal (Dual a _) = Dual a 0 
-
-flattenNonreal :: Num a => Dual a -> Dual a
-flattenNonreal (Dual _ b) = Dual 0 b
-
-transposeDual :: Dual a -> Dual a
-transposeDual (Dual a b) = Dual b a
-
+-- | Takes the derivative of a function.
+--
+-- @
+-- derive f x = (f (x + epsilon) - f x) / epsilon
+-- @
 derive :: (Ord a, Fractional a) => (Dual a -> Dual a) -> (Dual a -> Dual a)
 derive f x = (f (x + epsilon) - f x) / epsilon
 
+-- | Sets the dual part to zero.
+--
+-- @
+-- realFlatten (Dual a _) = Dual a 0
+-- @
+realFlatten :: Num a => Dual a -> Dual a
+realFlatten (Dual a _) = Dual a 0 
+
+-- | Sets the real part to zero.
+--
+-- @
+-- flattenReal (Dual a _) = Dual a 0 
+-- @
+nonrealFlatten :: Num a => Dual a -> Dual a
+nonrealFlatten (Dual _ b) = Dual 0 b
+
+-- | Swaps the components of a dual number.
+--
+-- @
+-- transposeDual (Dual a b) = Dual b a
+-- @
+transposeDual :: Dual a -> Dual a
+transposeDual (Dual a b) = Dual b a
+
+-- | A lens for getting the real component of a dual number.
 _real :: Lens (Dual a) (Dual a) a a
 _real = lens real (\(Dual _ b) c -> Dual c b)
 
+-- | A lens for getting the nonreal component of a dual number.
 _nonreal :: Lens (Dual a) (Dual a) a a
 _nonreal = lens nonreal (\(Dual a _) d -> Dual a d)
 
-flattenedReal :: Num a => Getter (Dual a) (Dual a)
-flattenedReal = to flattenReal
+-- | The lens version of 'realFlatten'
+realFlattened :: Num a => Getter (Dual a) (Dual a)
+realFlattened = to realFlatten
 
-flattenedNonreal :: Num a => Getter (Dual a) (Dual a)
-flattenedNonreal = to flattenNonreal
+-- | The lens version of 'nonrealFlatten'
+nonrealFlattened :: Num a => Getter (Dual a) (Dual a)
+nonrealFlattened = to nonrealFlatten
 
+-- | Lens version of 'transposeDual'
 transposed :: Getter (Dual a) (Dual a)
 transposed = to transposeDual
