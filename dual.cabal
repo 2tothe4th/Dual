@@ -19,8 +19,8 @@ library
     import:           warnings
     exposed-modules:  Data.Dual
     -- other-modules:
-    -- other-extensions:
-    build-depends:    base >= 4.7 && <= 4.21, lens >= 5 && <= 5.3.5
+    default-extensions: BlockArguments
+    build-depends:    base >= 4.7 && <= 4.21, lens >= 5 && <= 5.3.5, transformers
     hs-source-dirs:   src
     default-language: GHC2021
 
