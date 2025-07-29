@@ -71,14 +71,16 @@ instance (Ord a, Fractional a) => Fractional (Dual a) where
     Dual a b / Dual c d = Dual (a / c) ((b * c - a * d) / (c * c))
     fromRational = toDual . fromRational
 
-convertFunctionToDual :: Num a => (a -> a) -> (a -> a) -> (Dual a -> Dual a)
+-- | Takes a real-valued function and turns it into a dual-valued one.
+convertFunctionToDual :: (Eq a, Num a) => (a -> a) -> (a -> a) -> (Dual a -> Dual a)
+convertFunctionToDual f _ (Dual a 0) = toDual $ f a
 convertFunctionToDual f f' (Dual a b) = Dual (f a) (b * f' a)
 
 instance (Ord a, Floating a) => Floating (Dual a) where
     -- TODO: A better definition of a ** b
-    c@(Dual a _) ** d
-        | a == 0 = error "(**) is currently undefined for purely nonreal bases."
-        | otherwise = exp (log c * d)
+    Dual a b ** Dual c 0 = Dual (a ** c) (c * a ** (c - 1) * b)
+    Dual a 0 ** Dual c d = let aToTheC = a ** c in Dual aToTheC (log a * aToTheC * d)
+    a ** b = exp (log a * b)
     exp = convertFunctionToDual exp exp
     log = convertFunctionToDual log recip
     pi = toDual pi
@@ -86,12 +88,20 @@ instance (Ord a, Floating a) => Floating (Dual a) where
     cos = convertFunctionToDual cos (negate . sin)
     -- https://en.wikipedia.org/wiki/Trigonometric_functions#Derivatives_and_antiderivatives
     tan = convertFunctionToDual tan ((\x -> x * x) . recip . tan)
+    -- https://en.wikipedia.org/wiki/Inverse_trigonometric_functions
+    asin = convertFunctionToDual asin (\x -> 1 / sqrt (1 - x * x))
+    acos = convertFunctionToDual acos (\x -> -1 / sqrt (1 - x * x))
+    atan = convertFunctionToDual atan (\x -> 1 / sqrt (1 + x * x))
     -- https://en.wikipedia.org/wiki/Hyperbolic_functions
     sinh z = (exp z - exp (-z)) / 2
-    cosh z = 0.5 * (exp z + exp (-z))
+    cosh z = (exp z + exp (-z)) / 2
     tanh z = (exp z - exp (-z)) / (exp z + exp (-z))
+    asinh z = log (z + sqrt (z * z + 1))
+    acosh z = log (z + sqrt (z * z - 1))
+    atanh z = log ((1 + z) / (1 - z)) / 2
 
 -- https://en.wikipedia.org/wiki/Newton%27s_method
+-- | Iterates Newton's method once.
 newton :: (Ord a, Fractional a, Monad m) => (Dual a -> Dual a) -> StateT (Dual a) m (Dual a)
 newton f = do
     modify \x -> x - (f x / fromJust (derive f x))
@@ -173,6 +183,7 @@ _real = lens real (\(Dual _ b) c -> Dual c b)
 _nonreal :: Lens (Dual a) (Dual a) a a
 _nonreal = lens nonreal (\(Dual a _) d -> Dual a d)
 
+-- | Lens version of 'conjugate'.
 conjugated :: Num a => Getter (Dual a) (Dual a)
 conjugated = to conjugateDual
 
